@@ -11,15 +11,12 @@ from torch import optim
 from tensorboardX import SummaryWriter
 
 from datasets.dataset import img_batch_tensor2numpy, Chunked_sample_dataset
-# from models.ml_memAE_sc import ML_MemAE_SC
-# from model.utils import Reconstruction3DDataLoader,Reconstruction3DFlowDataLoader
 from model.CrossAttention import SMACAN ##july
 from utils.initialization_utils import weights_init_kaiming
 from utils.model_utils import loader, saver, only_model_saver
 from utils.vis_utils import visualize_sequences,vs
-# import ml_memAE_sc_eval
 from einops import rearrange
-from losses.loss import Gradient_Loss, Intensity_Loss, aggregate_kl_loss
+from losses.loss import Gradient_Loss, Intensity_Loss
 
 def train(config, training_chunked_samples_dir, testing_chunked_samples_file):
     paths = dict(log_dir="%s/%s_CrossAttention" % (config["log_root"], config["dataset_name"]),
@@ -118,20 +115,6 @@ def train(config, training_chunked_samples_dir, testing_chunked_samples_file):
         if epoch % config["saveevery"] == config["saveevery"] - 1:
             model_save_path = os.path.join(paths["ckpt_dir"], config["model_savename"])
             saver(model.state_dict(), optimizer.state_dict(), model_save_path, epoch + 1, step, max_to_save=300)
-
-            # evaluation
-            # with torch.no_grad():
-            #     auc = ml_memAE_sc_eval.evaluate(config, model_save_path + "-%d" % (epoch + 1),
-            #                                     testing_chunked_samples_file,
-            #                                     suffix=str(epoch + 1))
-            #     if auc > best_auc:
-            #         best_auc = auc
-            #         only_model_saver(model.state_dict(), os.path.join(paths["ckpt_dir"], "best.pth"))
-
-            #     writer.add_scalar("auc", auc, global_step=epoch + 1)
-
-    print("================ Best AUC %.4f ================" % best_auc)
-
 
 
 def cal_training_stats(config, ckpt_path, training_chunked_samples_dir, stats_save_path):
