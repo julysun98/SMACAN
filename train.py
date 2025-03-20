@@ -1,3 +1,8 @@
+"""
+The code in this file is adapted from:
+https://github.com/LiUzHiAn/hf2vad/blob/master/datasets/dataset.py
+"""
+
 import gc
 import numpy as np
 import torch.nn as nn
