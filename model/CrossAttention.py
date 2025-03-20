@@ -4,37 +4,6 @@ from einops import rearrange, repeat
 from torch import nn
 from torchvision import models
 
-# class CrossAttention(nn.Module):
-#     def __init__(self, in_dim1, in_dim2, k_dim, v_dim, num_heads):
-#         super(CrossAttention, self).__init__()
-#         self.num_heads = num_heads
-#         self.k_dim = k_dim
-#         self.v_dim = v_dim
-        
-#         self.proj_q1 = nn.Linear(in_dim1, k_dim * num_heads, bias=False)
-#         self.proj_k2 = nn.Linear(in_dim2, k_dim * num_heads, bias=False)
-#         self.proj_v2 = nn.Linear(in_dim2, v_dim * num_heads, bias=False)
-#         self.proj_o = nn.Linear(v_dim * num_heads, in_dim1)
-        
-#     def forward(self, x1, x2, mask=None):
-#         batch_size, seq_len1, in_dim1 = x1.size()
-#         seq_len2 = x2.size(1)
-        
-#         q1 = self.proj_q1(x1).view(batch_size, seq_len1, self.num_heads, self.k_dim).permute(0, 2, 1, 3)
-#         k2 = self.proj_k2(x2).view(batch_size, seq_len2, self.num_heads, self.k_dim).permute(0, 2, 3, 1)
-#         v2 = self.proj_v2(x2).view(batch_size, seq_len2, self.num_heads, self.v_dim).permute(0, 2, 1, 3)
-        
-#         attn = torch.matmul(q1, k2) / self.k_dim**0.5
-        
-#         if mask is not None:
-#             attn = attn.masked_fill(mask == 0, -1e9)
-        
-#         attn = F.softmax(attn, dim=-1)
-#         output = torch.matmul(attn, v2).permute(0, 2, 1, 3).contiguous().view(batch_size, seq_len1, -1)
-#         output = self.proj_o(output)
-        
-#         return output
-
 class CrossAttention(nn.Module):
     def __init__(self, in_channels, emb_dim, att_dropout=0.0, dropout=0.0):
         super(CrossAttention, self).__init__()
@@ -94,8 +63,7 @@ class SMACAN(nn.Module):
         super(MotionGuide, self).__init__()
         self.inch_flow = 4*2
         self.inch_RGB = 4*3
-        ################################resnet101 Flow#######################################
-        # feats_Flow = models.resnet101(pretrained=True)
+
         self.conv0_Flow =  nn.Sequential(
             nn.Conv2d(in_channels=self.inch_flow, out_channels=64, kernel_size=3, stride=1,padding=1,bias=False),
             nn.BatchNorm2d(64),
@@ -117,22 +85,12 @@ class SMACAN(nn.Module):
             nn.BatchNorm2d(512),
             nn.ReLU(inplace=True)
         )
-        # self.crosscov_Flow = nn.Sequential(
-        #     nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=4,bias=False),
-        #     nn.BatchNorm2d(512),
-        #     nn.ReLU(inplace=True)
-        # )
-        # self.conv4_Flow = feats_Flow.layer4
-        # self.cross_attention = CrossAttention(512, 512, att_dropout=0.0, aropout=0.0)
-         # Cross-Attention layers
+
         self.cross_attention0 = CrossAttention(64, 64, att_dropout=0.0, dropout=0.0)
         self.cross_attention1 = CrossAttention(128, 128, att_dropout=0.0, dropout=0.0)
         self.cross_attention2 = CrossAttention(256, 256, att_dropout=0.0, dropout=0.0)
         self.cross_attention3 = CrossAttention(512, 512, att_dropout=0.0, dropout=0.0)
 
-        
-        ################################resnet101 RGB#######################################
-        # feats_RGB = models.resnet101(pretrained=True)
         self.conv0_RGB = nn.Sequential(
             nn.Conv2d(in_channels=self.inch_RGB, out_channels=64, kernel_size=3, padding=1, stride=1, bias=False),
             nn.BatchNorm2d(64),
@@ -156,12 +114,7 @@ class SMACAN(nn.Module):
             nn.BatchNorm2d(512),
             nn.ReLU(inplace=True)
         )
-        # self.crosscov_RGB = nn.Sequential(
-        #     nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=4,bias=False),
-        #     nn.BatchNorm2d(512),
-        #     nn.ReLU(inplace=True)
-        # )
-        # self.sig = nn.Sigmoid()
+       
         #================decoder RGB ========================
         self.deconv3 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=512, out_channels=256, kernel_size=4, stride=2, padding=1, output_padding=0)
@@ -227,16 +180,10 @@ class SMACAN(nn.Module):
 
     def forward(self, input, flow):
         c0_Flow = self.conv0_Flow(flow)  # N,64,32,32(64,16,16)
-        # c0_Flow_ = self.conv1x1_0(c0_Flow)
-        c1_Flow = self.conv1_Flow(c0_Flow)  # N,128,16,16
-        # c1_Flow_ = self.conv1x1_1(c1_Flow)
+        c1_Flow = self.conv1_Flow(c0_Flow)  # N,128,16,16  
         c2_Flow = self.conv2_Flow(c1_Flow)  # N,256,8,8
-        # c2_Flow_ = self.conv1x1_2(c2_Flow)
         c3_Flow = self.conv3_Flow(c2_Flow)  # N,512,4,4
-        # c4_Flow = c3_Flow.view(c3_Flow.size(0), c3_Flow.size(1), -1)
-        # c3_Flow_ = self.conv1x1_3(c3_Flow) #N,1,4,4 
-        # c4_Flow = self.conv4_Flow(c3_Flow)  # N,2048,12,12
-
+     
         c0_RGB = self.conv0_RGB(input)  # N,64,32,32
         c0_RGB_ = self.cross_attention0(c0_Flow,c0_RGB)+c0_RGB
 
@@ -247,19 +194,12 @@ class SMACAN(nn.Module):
         c2_RGB_ = self.cross_attention2(c2_Flow,c2_RGB)+c2_RGB
 
         c3_RGB = self.conv3_RGB(c2_RGB) # N,512,4,4
-        # c4_RGB = c3_RGB.view(c3_RGB.size(0), c3_RGB.size(1), -1)
         c3_RGB_ = self.cross_attention3(c3_Flow,c3_RGB)+c3_RGB
 
         
-        # d3 = nn.Sigmoid()(c3_RGB)*c3_Flow + c3_RGB
-        # d3 = nn.Sigmoid()(c3_Flow)*c3_RGB + c3_RGB
-        
         d3 = c3_RGB_ #N,512,4,4
-        # print("d3.shape",d3.shape)
         dd3 = c3_Flow #N,512,4,4
-        # print("dd3.shape",dd3.shape)
         d3_feature =  self.global_avg_pool(d3).view(d3.size(0), -1)
-        # print(self.global_avg_pool(d3).shape)
         dd3_feature =  self.global_avg_pool(dd3).view(dd3.size(0), -1)
         
         d2 = self.deconv3(d3)
