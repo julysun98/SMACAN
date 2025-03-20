@@ -89,7 +89,7 @@ class CrossAttention(nn.Module):
         return out #, att_weights
 
 
-class MotionGuide(nn.Module):
+class SMACAN(nn.Module):
     def __init__(self):
         super(MotionGuide, self).__init__()
         self.inch_flow = 4*2
@@ -294,7 +294,7 @@ class MotionGuide(nn.Module):
 
 
 if __name__ == "__main__":
-    model = MotionGuide()
+    model = SMACAN()
     input = torch.autograd.Variable(torch.randn(256, 12, 32, 32))
 
     flow = torch.autograd.Variable(torch.randn(256, 8, 32, 32))
