@@ -13,7 +13,7 @@ from tensorboardX import SummaryWriter
 from datasets.dataset import img_batch_tensor2numpy, Chunked_sample_dataset
 # from models.ml_memAE_sc import ML_MemAE_SC
 # from model.utils import Reconstruction3DDataLoader,Reconstruction3DFlowDataLoader
-from model.CrossAttention import MotionGuide ##july
+from model.CrossAttention import SMACAN ##july
 from utils.initialization_utils import weights_init_kaiming
 from utils.model_utils import loader, saver, only_model_saver
 from utils.vis_utils import visualize_sequences,vs
@@ -42,7 +42,7 @@ def train(config, training_chunked_samples_dir, testing_chunked_samples_file):
     intensity_loss = Intensity_Loss(l_num=config["intensity_loss_norm"]).to(device)
     mse_loss = nn.MSELoss()
 
-    model = MotionGuide()
+    model = SMACAN()
     model.to(config["device"])
     # model = nn.DataParallel(model) #July
 
@@ -136,7 +136,7 @@ def train(config, training_chunked_samples_dir, testing_chunked_samples_file):
 
 def cal_training_stats(config, ckpt_path, training_chunked_samples_dir, stats_save_path):
     device = config["device"]
-    model = MotionGuide().to(config["device"]).eval()
+    model = SMACAN().to(config["device"]).eval()
 
     # load weights
     model_weights = torch.load(ckpt_path)["model_state_dict"]
